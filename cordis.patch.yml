@@ -1,0 +1,6 @@
+# Bundle patch for dsh-dianming: inserts its one plugin row into the composition.
+# The Host half owns the catalogue, the scanner, the matcher and the launcher;
+# the client half (./client) paints the floating button and the popup card.
+- insert:
+    - id: dianming
+      name: 'dsh-dianming'

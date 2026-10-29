@@ -5,6 +5,14 @@
  * 不真启动任何软件。
  */
 import { EventEmitter } from 'node:events'
+import { mkdirSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+// 用独立沙箱目录，别碰用户真实清单
+const SANDBOX = join(tmpdir(), 'dianming-smoke-' + process.pid)
+process.env.DSH_HOME = SANDBOX
+mkdirSync(join(SANDBOX, '.dsh'), { recursive: true })
 
 const routes = []
 const tools = []
@@ -14,9 +22,13 @@ const ctx = {
   get(name) {
     if (name === 'llm') {
       return {
-        stream() {
+        stream(params) {
+          const prompt = String((params && params.system) || '') + JSON.stringify((params && params.messages) || '')
+          const body = prompt.includes('desc') && prompt.includes('keys')
+            ? '[{"id":"1","desc":"冒烟测试：AI 写的用途说明","keys":["冒烟","测试"]}]'
+            : '{"id":"1","reason":"假模型"}'
           return (async function* () {
-            yield { type: 'text-delta', index: 0, text: '{"id":"1","reason":"假模型"}' }
+            yield { type: 'text-delta', index: 0, text: body }
           })()
         },
       }
@@ -43,6 +55,8 @@ const ctx = {
   },
 }
 
+const core = await import('../lib/core.js')
+await core.runScan()
 const mod = await import('../lib/index.js')
 mod.apply(ctx, {})
 
@@ -91,6 +105,12 @@ await call('POST', '/settings', {
 })
 out.push('设置已还原: fab.right=' + state.body.settings.fab.right + ' mode=' + state.body.settings.semanticMode)
 
+// AI 补简介：假模型吐一条 JSON 数组，验证写入 desc/descSource
+const enriched = await call('POST', '/enrich', { mode: 'ai', limit: 2 })
+out.push('AI 补简介: ' + JSON.stringify(enriched.body))
+const enrichedApp = await call('GET', '/apps?q=' + encodeURIComponent('AI 写的用途'))
+out.push('补简介后按描述搜到: ' + (enrichedApp.body.apps || []).map((a) => a.name + '/' + a.descSource).join(','))
+
 const denied = await call('GET', '/state', undefined, 'evil.example.com')
 out.push('非回环 Host: status=' + denied.status)
 
@@ -115,3 +135,4 @@ out.push('删除手工条目: ok=' + removed.body.ok)
 out.push('工具: ' + registered.map((t) => t.name).join(', '))
 out.push('路由: ' + routes.map((r) => r.kind + ' ' + r.path).join(', '))
 console.log(out.join('\n'))
+rmSync(SANDBOX, { recursive: true, force: true })

@@ -36,7 +36,14 @@ const ctx = {
     if (name === 'agentDefaultModel') {
       return { currentSelection: () => ({ provider: 'stub', model: 'stub-model' }) }
     }
-    if (name === 'web') return { search: async () => [], fetch: async () => '' }
+    if (name === 'web') {
+      return {
+        search: async ({ query }) => ({
+          results: [{ title: query + ' 官网', snippet: '冒烟测试：这是网页摘要里写的用途' }],
+        }),
+        fetch: async () => '',
+      }
+    }
     return null
   },
   effect(fn) {
@@ -107,7 +114,13 @@ out.push('设置已还原: fab.right=' + state.body.settings.fab.right + ' mode=
 
 // AI 补简介：假模型吐一条 JSON 数组，验证写入 desc/descSource
 const enriched = await call('POST', '/enrich', { mode: 'ai', limit: 2 })
-out.push('AI 补简介: ' + JSON.stringify(enriched.body))
+out.push('补简介任务已启动: ' + JSON.stringify({ running: enriched.body.running, total: enriched.body.total }))
+let progress = enriched.body
+for (let i = 0; i < 40 && progress.running; i += 1) {
+  await new Promise((resolve) => setTimeout(resolve, 50))
+  progress = (await call('GET', '/enrich-progress')).body
+}
+out.push('补简介进度: ' + JSON.stringify({ done: progress.done, total: progress.total, filled: progress.filled, running: progress.running }))
 const enrichedApp = await call('GET', '/apps?q=' + encodeURIComponent('AI 写的用途'))
 out.push('补简介后按描述搜到: ' + (enrichedApp.body.apps || []).map((a) => a.name + '/' + a.descSource).join(','))
 

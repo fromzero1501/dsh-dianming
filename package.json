@@ -1,7 +1,7 @@
 {
   "name": "dsh-dianming",
   "version": "0.1.0",
-  "description": "点名：给本地软件绑关键词和描述，说一句“打开那个剪视频的”就把对应软件开起来；右下角常驻按钮 + 弹层，不新建对话。",
+  "description": "点名：给本地软件绑关键词和描述，说一句\"打开那个剪视频的\"就把对应软件开起来；右下角常驻按钮 + 弹层，不新建对话。",
   "keywords": [
     "deepseek-harness",
     "dsh-plugin",

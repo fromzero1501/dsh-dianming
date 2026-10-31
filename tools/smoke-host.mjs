@@ -142,6 +142,20 @@ const wrote = await call('POST', '/app', { id: created.body.app.id, desc: '冒�
 out.push('写描述: desc=' + wrote.body.app.desc + ' descSource=' + wrote.body.app.descSource)
 const found = await call('GET', '/apps?q=' + encodeURIComponent('冒烟测试写的描述'))
 out.push('按描述搜到: ' + found.body.apps.map((a) => a.name).join(','))
+// 启动目标：不存在必须拒绝；存在则落盘，可还原
+const badTarget = await call('POST', '/open-target', { path: 'C:\\definitely-missing\\nope.exe' })
+const badSave = await call('POST', '/app', { id: created.body.app.id, openPath: 'C:\\definitely-missing\\nope.bat' })
+const goodSave = await call('POST', '/app', { id: created.body.app.id, openPath: 'C:\\Windows\\System32\\notepad.exe' })
+const targetView = await call('GET', '/apps?q=' + encodeURIComponent('冒烟测试条目'))
+const targetRow = (targetView.body.apps || []).find((a) => a.id === created.body.app.id) || {}
+out.push('试开不存在的目标: ok=' + badTarget.body.ok + ' error=' + (badTarget.body.error || ''))
+out.push('保存不存在的目标: ok=' + badSave.body.ok)
+out.push('保存存在的启动目标: ok=' + goodSave.body.ok + ' openPath=' + (targetRow.openPath || '(空)'))
+const resetTarget = await call('POST', '/app', { id: created.body.app.id, openPath: '' })
+const afterReset = await call('GET', '/apps?q=' + encodeURIComponent('冒烟测试条目'))
+const resetRow = (afterReset.body.apps || []).find((a) => a.id === created.body.app.id) || {}
+out.push('还原启动目标: ok=' + resetTarget.body.ok + ' openPath=' + (resetRow.openPath || '(空)'))
+
 const removed = await call('POST', '/app-delete', { id: created.body.app.id })
 out.push('删除手工条目: ok=' + removed.body.ok)
 

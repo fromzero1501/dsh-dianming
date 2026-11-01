@@ -156,8 +156,36 @@ const afterReset = await call('GET', '/apps?q=' + encodeURIComponent('冒烟测�
 const resetRow = (afterReset.body.apps || []).find((a) => a.id === created.body.app.id) || {}
 out.push('还原启动目标: ok=' + resetTarget.body.ok + ' openPath=' + (resetRow.openPath || '(空)'))
 
+// 收藏：切换 → 收藏面板只列收藏 → 取消
+const favOn = await call('POST', '/app', { id: created.body.app.id, fav: true })
+out.push('收藏: ok=' + favOn.body.ok + ' fav=' + favOn.body.app.fav + ' 有收藏时间=' + (Number(favOn.body.app.favAt) > 0))
+const favList = await call('GET', '/apps?fav=1&limit=200')
+const favRows = favList.body.apps || []
+out.push('收藏面板: total=' + favList.body.total + ' counts.fav=' + favList.body.counts.fav
+  + ' 含本条目=' + favRows.some((a) => a.id === created.body.app.id)
+  + ' 全是收藏=' + favRows.every((a) => a.fav === true))
+const favOff = await call('POST', '/app', { id: created.body.app.id, fav: false })
+const favList2 = await call('GET', '/apps?fav=1&limit=200')
+out.push('取消收藏: ok=' + favOff.body.ok + ' fav=' + favOff.body.app.fav
+  + ' 面板已移除=' + !(favList2.body.apps || []).some((a) => a.id === created.body.app.id))
+
 const removed = await call('POST', '/app-delete', { id: created.body.app.id })
 out.push('删除手工条目: ok=' + removed.body.ok)
+
+// 收藏项不被重扫清掉：mergeScanned 里 fav 视同"用户动过"（只改内存，不落盘，最后跑）
+const store = core.loadStore()
+const keep = store.apps.find((a) => a.source !== 'manual')
+const plain = store.apps.find((a) => a !== keep && a.source !== 'manual' && !a.fav
+  && !(Number(a.uses) > 0) && a.descSource !== 'user')
+if (keep) {
+  keep.fav = true
+  keep.uses = 0
+  keep.descSource = ''
+  const scanned = core.mergeScanned(store, [], new Set())
+  out.push('重扫保留收藏: 收藏条目还在=' + store.apps.includes(keep)
+    + ' 未收藏的自动条目被清=' + (plain ? !store.apps.includes(plain) : 'n/a')
+    + ' pruned=' + scanned.pruned)
+}
 
 out.push('工具: ' + registered.map((t) => t.name).join(', '))
 out.push('路由: ' + routes.map((r) => r.kind + ' ' + r.path).join(', '))

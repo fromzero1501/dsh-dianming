@@ -20,4 +20,14 @@ console.log(`脚本入口 ${scripts.length} 条:`)
 for (const app of scripts.slice(0, 40)) {
   console.log(`  ${app.name}  →  ${app.path}   别名=${(app.aliases || []).join(',')}`)
 }
+// 按关键词抽查（node tools/scan-script-probe.mjs tts）
+const keyword = (process.argv[2] || '').toLowerCase()
+if (keyword) {
+  const hits = store.apps.filter((app) => `${app.name} ${app.path}`.toLowerCase().includes(keyword))
+  console.log(`关键词「${keyword}」命中 ${hits.length} 条:`)
+  for (const app of hits.slice(0, 20)) {
+    console.log(`  [${app.kind}] ${app.name}  →  ${app.path}   别名=${(app.aliases || []).join(',')}`)
+    console.log(`       flags: uses=${app.uses || 0} descSource=${app.descSource || '-'} fav=${app.fav === true} source=${app.source}`)
+  }
+}
 rmSync(sandbox, { recursive: true, force: true })

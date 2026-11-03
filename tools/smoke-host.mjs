@@ -101,6 +101,8 @@ out.push(`state: total=${state.body.total} roots=${(state.body.settings.roots ||
 
 const search = await call('POST', '/search', { q: '剪视频', limit: 5 })
 out.push('search 剪视频: ' + search.body.candidates.map((c) => `${c.name}(${c.score})`).join(' / '))
+const unrelated = await call('POST', '/search', { q: '抖音', limit: 5 })
+out.push('search 无关词(抖音): 命中=' + unrelated.body.candidates.length + '（应为 0，不能因为常用就把别的软件翻出来）')
 
 const semantic = await call('POST', '/semantic', { q: '要把视频压小一点' })
 out.push('semantic: ok=' + semantic.body.ok + ' app=' + (semantic.body.app ? semantic.body.app.name : '-') + ' reason=' + semantic.body.reason)

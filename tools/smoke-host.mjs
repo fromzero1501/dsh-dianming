@@ -183,16 +183,10 @@ out.push('拖入重复: 新增=' + (dropAgain.body.added || []).length
 const dropBad = await call('POST', '/app-add-path', { paths: ['C:\\Windows\\win.ini', 'C:\\definitely-missing\\nope.exe'] })
 out.push('拖入不支持/不存在: 跳过=' + JSON.stringify((dropBad.body.skipped || []).map((item) => item.reason)))
 
-// 宿主不给 File.path 时的兜底：渲染层把字节传上来，服务端落一份副本再入库
-const dropBytes = Buffer.from('@echo off\r\necho smoke\r\n', 'utf8').toString('base64')
-const dropUpload = await call('POST', '/drop-upload', { name: '烟测启动.bat', data: dropBytes })
-out.push('上传落库: ok=' + dropUpload.body.ok + ' 新增=' + (dropUpload.body.added || []).length
-  + ' 落点=' + String(dropUpload.body.path || '').replace(/^.*dropped\\/, 'dropped\\'))
-const dropBig = await call('POST', '/drop-upload', {
-  name: 'big.exe',
-  data: Buffer.alloc(9 * 1024 * 1024).toString('base64'),
-})
-out.push('上传超限被拒: ok=' + dropBig.body.ok + ' 原因=' + (dropBig.body.error || ''))
+// 拖拽拿不到路径时会话侧不再落副本（脚本要靠原目录），改为走剪贴板取真实路径：
+// 剪贴板里没有文件时必须给出明确原因，而不是静默失败。
+const clipTry = await call('POST', '/clip-add', {})
+out.push('剪贴板加入(空): ok=' + clipTry.body.ok + ' 原因=' + String(clipTry.body.error || '').slice(0, 20))
 
 // 收藏项不被重扫清掉：mergeScanned 里 fav 视同"用户动过"（只改内存，不落盘，最后跑）
 const store = core.loadStore()

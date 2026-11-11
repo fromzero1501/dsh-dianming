@@ -174,6 +174,15 @@ out.push('取消收藏: ok=' + favOff.body.ok + ' fav=' + favOff.body.app.fav
 const removed = await call('POST', '/app-delete', { id: created.body.app.id })
 out.push('删除手工条目: ok=' + removed.body.ok)
 
+// 拖拽入库：新路径能加、重复要跳过、不支持的类型要拒
+const dropOne = await call('POST', '/app-add-path', { paths: ['C:\\Windows\\System32\\notepad.exe'] })
+out.push('拖入 exe: 新增=' + (dropOne.body.added || []).length + ' 名称=' + ((dropOne.body.added || [])[0] || {}).name)
+const dropAgain = await call('POST', '/app-add-path', { paths: ['C:\\Windows\\System32\\notepad.exe'] })
+out.push('拖入重复: 新增=' + (dropAgain.body.added || []).length
+  + ' 跳过原因=' + ((dropAgain.body.skipped || [])[0] || {}).reason)
+const dropBad = await call('POST', '/app-add-path', { paths: ['C:\\Windows\\win.ini', 'C:\\definitely-missing\\nope.exe'] })
+out.push('拖入不支持/不存在: 跳过=' + JSON.stringify((dropBad.body.skipped || []).map((item) => item.reason)))
+
 // 收藏项不被重扫清掉：mergeScanned 里 fav 视同"用户动过"（只改内存，不落盘，最后跑）
 const store = core.loadStore()
 const keep = store.apps.find((a) => a.source !== 'manual')
